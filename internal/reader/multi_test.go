@@ -62,3 +62,20 @@ func TestMultiSource_Empty(t *testing.T) {
 		t.Errorf("expected 0 lines, got %d", len(lines))
 	}
 }
+
+func TestMultiSource_SingleSource(t *testing.T) {
+	dir := t.TempDir()
+	p1 := writeTemp(t, dir, "only.log", "one\ntwo\nthree\n")
+
+	m := reader.NewMultiSource(reader.NewFileSource(p1))
+	lines, err := m.Lines()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(lines) != 3 {
+		t.Errorf("expected 3 lines, got %d", len(lines))
+	}
+	if lines[0] != "one" || lines[2] != "three" {
+		t.Errorf("unexpected lines: %v", lines)
+	}
+}
