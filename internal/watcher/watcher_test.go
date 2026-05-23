@@ -85,3 +85,31 @@ func TestTailSource_DefaultPollInterval(t *testing.T) {
 		t.Fatal("expected non-nil TailSource")
 	}
 }
+
+func TestTailSource_ContextCancelledBeforeRead(t *testing.T) {
+	// Cancelling the context before any lines are written should cause Lines
+	// to close the lines channel and send a nil error promptly.
+	f := writeTempFile(t, "")
+	defer os.Remove(f.Name())
+	defer f.Close()
+
+	src := watcher.NewTailSource(f.Name(), 50*time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancel immediately
+
+	lines, errs := src.Lines(ctx)
+
+	// The lines channel should be closed without emitting any lines.
+	var got []string
+	for line := range lines {
+		got = append(got, line)
+	}
+
+	if len(got) != 0 {
+		t.Errorf("expected no lines after immediate cancel, got %d: %v", len(got), got)
+	}
+
+	if err := <-errs; err != nil {
+		t.Fatalf("unexpected error after context cancel: %v", err)
+	}
+}
