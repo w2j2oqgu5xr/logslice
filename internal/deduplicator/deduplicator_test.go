@@ -77,3 +77,21 @@ func TestDeduplicator_EmptyInput(t *testing.T) {
 		t.Fatalf("expected empty result, got %d", len(result))
 	}
 }
+
+func TestDeduplicator_MultipleCallsAccumulateState(t *testing.T) {
+	d := deduplicator.New(1 * time.Minute)
+
+	// First call seeds the deduplicator with "retry"
+	first := makeEntries([]string{"retry"}, parser.LevelWarn)
+	d.Filter(first)
+
+	// Second call with the same message should be filtered out
+	second := makeEntries([]string{"retry", "new event"}, parser.LevelWarn)
+	result := d.Filter(second)
+	if len(result) != 1 {
+		t.Fatalf("expected 1 entry (duplicate filtered across calls), got %d", len(result))
+	}
+	if result[0].Message != "new event" {
+		t.Fatalf("expected 'new event', got %q", result[0].Message)
+	}
+}
